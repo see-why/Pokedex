@@ -1,2 +1,3 @@
-# MyHTML
-A designed page, running with a clock embedded. 
+# Pokedex
+
+Learn all about Pokemons.
