@@ -12,7 +12,10 @@ func main() {
 
 	for {
 		fmt.Print("Pokedex > ")
-		scanner.Scan()
+		if !scanner.Scan() {
+			// No more input available (EOF or error)
+			break
+		}
 		input := scanner.Text()
 
 		words := cleanInput(input)
