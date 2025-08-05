@@ -20,8 +20,18 @@ func main() {
 			continue
 		}
 
-		firstWord := words[0]
-		fmt.Printf("Your command was: %s\n", firstWord)
+		commandName := words[0]
+
+		// Look up command in registry
+		commands := getCommands()
+		if command, exists := commands[commandName]; exists {
+			err := command.callback()
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		} else {
+			fmt.Println("Unknown command")
+		}
 	}
 }
 
