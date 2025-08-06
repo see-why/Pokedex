@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/see-why/Pokedex/internal/pokecache"
+)
 
 func TestCleanInput(t *testing.T) {
 	cases := []struct {
@@ -117,6 +122,7 @@ func TestGetCommands(t *testing.T) {
 func TestCommandMapb_FirstPage(t *testing.T) {
 	// Test mapb command when on first page (previousLocationURL is nil)
 	cfg := &config{
+		pokeapiClient:       pokecache.NewCache(5 * time.Minute),
 		nextLocationURL:     "https://pokeapi.co/api/v2/location-area",
 		previousLocationURL: nil,
 	}
@@ -139,6 +145,7 @@ func TestCommandMapb_FirstPage(t *testing.T) {
 func TestConfig(t *testing.T) {
 	// Test config struct initialization
 	cfg := &config{
+		pokeapiClient:       pokecache.NewCache(5 * time.Minute),
 		nextLocationURL:     "https://pokeapi.co/api/v2/location-area",
 		previousLocationURL: nil,
 	}
@@ -189,7 +196,9 @@ func TestCliCommandStruct(t *testing.T) {
 	}
 
 	// Test calling the callback
-	cfg := &config{}
+	cfg := &config{
+		pokeapiClient: pokecache.NewCache(5 * time.Minute),
+	}
 	err := cmd.callback(cfg)
 	if err != nil {
 		t.Errorf("callback returned unexpected error: %v", err)
