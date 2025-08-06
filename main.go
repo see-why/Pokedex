@@ -2,12 +2,20 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 )
 
 func main() {
+	config := &config{
+		nextLocationURL:     "https://pokeapi.co/api/v2/location-area",
+		previousLocationURL: nil,
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -28,7 +36,7 @@ func main() {
 		// Look up command in registry
 		commands := getCommands()
 		if command, exists := commands[commandName]; exists {
-			err := command.callback()
+			err := command.callback(config)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 			}
@@ -38,10 +46,15 @@ func main() {
 	}
 }
 
+type config struct {
+	nextLocationURL     string
+	previousLocationURL *string
+}
+
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*config) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -56,16 +69,26 @@ func getCommands() map[string]cliCommand {
 			description: "Displays a help message",
 			callback:    commandHelp,
 		},
+		"map": {
+			name:        "map",
+			description: "Displays the names of 20 location areas",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Displays the previous 20 location areas",
+			callback:    commandMapb,
+		},
 	}
 }
 
-func commandExit() error {
+func commandExit(cfg *config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(cfg *config) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
@@ -77,6 +100,78 @@ func commandHelp() error {
 	fmt.Println()
 
 	return nil
+}
+
+func commandMap(cfg *config) error {
+	locationAreas, err := getLocationAreas(cfg.nextLocationURL)
+	if err != nil {
+		return err
+	}
+
+	// Update config with new URLs
+	cfg.nextLocationURL = locationAreas.Next
+	cfg.previousLocationURL = locationAreas.Previous
+
+	// Print all location area names
+	for _, area := range locationAreas.Results {
+		fmt.Println(area.Name)
+	}
+
+	return nil
+}
+
+func commandMapb(cfg *config) error {
+	if cfg.previousLocationURL == nil {
+		fmt.Println("you're on the first page")
+		return nil
+	}
+
+	locationAreas, err := getLocationAreas(*cfg.previousLocationURL)
+	if err != nil {
+		return err
+	}
+
+	// Update config with new URLs
+	cfg.nextLocationURL = locationAreas.Next
+	cfg.previousLocationURL = locationAreas.Previous
+
+	// Print all location area names
+	for _, area := range locationAreas.Results {
+		fmt.Println(area.Name)
+	}
+
+	return nil
+}
+
+type locationAreasResp struct {
+	Count    int     `json:"count"`
+	Next     string  `json:"next"`
+	Previous *string `json:"previous"`
+	Results  []struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"results"`
+}
+
+func getLocationAreas(pageURL string) (locationAreasResp, error) {
+	res, err := http.Get(pageURL)
+	if err != nil {
+		return locationAreasResp{}, err
+	}
+	defer res.Body.Close()
+
+	dat, err := io.ReadAll(res.Body)
+	if err != nil {
+		return locationAreasResp{}, err
+	}
+
+	locationAreasResponse := locationAreasResp{}
+	err = json.Unmarshal(dat, &locationAreasResponse)
+	if err != nil {
+		return locationAreasResp{}, err
+	}
+
+	return locationAreasResponse, nil
 }
 
 func cleanInput(text string) []string {
