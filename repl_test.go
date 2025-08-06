@@ -64,13 +64,13 @@ func TestGetCommands(t *testing.T) {
 	commands := getCommands()
 
 	// Test that we have exactly the expected number of commands
-	expectedCount := 5
+	expectedCount := 6
 	if len(commands) != expectedCount {
 		t.Errorf("Expected %d commands, got %d", expectedCount, len(commands))
 	}
 
 	// Test that all expected commands are present
-	expectedCommands := []string{"help", "exit", "map", "mapb", "explore"}
+	expectedCommands := []string{"help", "exit", "map", "mapb", "explore", "catch"}
 
 	for _, expectedCmd := range expectedCommands {
 		_, exists := commands[expectedCmd]
@@ -216,6 +216,23 @@ func TestCommandExplore_NoArgs(t *testing.T) {
 	}
 
 	expectedError := "you must provide a location area name"
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+	}
+}
+
+func TestCommandCatch_NoArgs(t *testing.T) {
+	cfg := &config{
+		pokeapiClient: pokecache.NewCache(5 * time.Minute),
+		caughtPokemon: make(map[string]Pokemon),
+	}
+
+	err := commandCatch(cfg)
+	if err == nil {
+		t.Error("expected error when no arguments provided")
+	}
+
+	expectedError := "you must provide a Pokemon name"
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q, got %q", expectedError, err.Error())
 	}
