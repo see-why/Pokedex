@@ -189,10 +189,10 @@ type locationAreasResp struct {
 }
 
 type locationAreaResp struct {
-	ID                   int    `json:"id"`
-	Name                 string `json:"name"`
-	GameIndex            int    `json:"game_index"`
-	PokemonEncounters    []struct {
+	ID                int    `json:"id"`
+	Name              string `json:"name"`
+	GameIndex         int    `json:"game_index"`
+	PokemonEncounters []struct {
 		Pokemon struct {
 			Name string `json:"name"`
 			URL  string `json:"url"`
