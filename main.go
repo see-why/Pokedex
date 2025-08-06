@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -18,6 +19,7 @@ func main() {
 		pokeapiClient:       pokecache.NewCache(5 * time.Minute),
 		nextLocationURL:     "https://pokeapi.co/api/v2/location-area",
 		previousLocationURL: nil,
+		caughtPokemon:       make(map[string]Pokemon),
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -58,6 +60,7 @@ type config struct {
 	pokeapiClient       pokecache.Cache
 	nextLocationURL     string
 	previousLocationURL *string
+	caughtPokemon       map[string]Pokemon
 }
 
 type cliCommand struct {
@@ -92,6 +95,11 @@ func getCommands() map[string]cliCommand {
 			name:        "explore",
 			description: "Explore a location area",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch a Pokemon",
+			callback:    commandCatch,
 		},
 	}
 }
@@ -178,6 +186,40 @@ func commandExplore(cfg *config, args ...string) error {
 	return nil
 }
 
+func commandCatch(cfg *config, args ...string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("you must provide a Pokemon name")
+	}
+
+	pokemonName := args[0]
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	pokemon, err := getPokemon(cfg, pokemonName)
+	if err != nil {
+		return err
+	}
+
+	// Use base experience to determine catch difficulty
+	// Higher base experience = harder to catch
+	const maxCatchChance = 50 // Base 50% chance for Pokemon with 0 base experience
+	catchChance := maxCatchChance
+	if pokemon.BaseExperience > 0 {
+		// Reduce catch chance based on base experience, minimum 5% chance
+		catchChance = max(5, maxCatchChance-pokemon.BaseExperience/10)
+	}
+
+	// Generate random number between 1-100
+	if rand.Intn(100)+1 <= catchChance {
+		cfg.caughtPokemon[pokemon.Name] = pokemon
+		fmt.Printf("%s was caught!\n", pokemon.Name)
+		fmt.Printf("You may now inspect it with the inspect command.\n")
+	} else {
+		fmt.Printf("%s escaped!\n", pokemon.Name)
+	}
+
+	return nil
+}
+
 type locationAreasResp struct {
 	Count    int     `json:"count"`
 	Next     string  `json:"next"`
@@ -198,6 +240,25 @@ type locationAreaResp struct {
 			URL  string `json:"url"`
 		} `json:"pokemon"`
 	} `json:"pokemon_encounters"`
+}
+
+type Pokemon struct {
+	ID             int    `json:"id"`
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+	Height         int    `json:"height"`
+	Weight         int    `json:"weight"`
+	Stats          []struct {
+		BaseStat int `json:"base_stat"`
+		Stat     struct {
+			Name string `json:"name"`
+		} `json:"stat"`
+	} `json:"stats"`
+	Types []struct {
+		Type struct {
+			Name string `json:"name"`
+		} `json:"type"`
+	} `json:"types"`
 }
 
 func getLocationAreas(cfg *config, pageURL string) (locationAreasResp, error) {
@@ -272,6 +333,44 @@ func getLocationArea(cfg *config, locationAreaName string) (locationAreaResp, er
 	cfg.pokeapiClient.Add(url, dat)
 
 	return locationAreaResponse, nil
+}
+
+func getPokemon(cfg *config, pokemonName string) (Pokemon, error) {
+	url := "https://pokeapi.co/api/v2/pokemon/" + pokemonName
+
+	// Check if we have the data in cache
+	if val, ok := cfg.pokeapiClient.Get(url); ok {
+		fmt.Printf("Using cached data for %s\n", url)
+		pokemonResponse := Pokemon{}
+		err := json.Unmarshal(val, &pokemonResponse)
+		if err != nil {
+			return Pokemon{}, err
+		}
+		return pokemonResponse, nil
+	}
+
+	fmt.Printf("Making HTTP request to %s\n", url)
+	res, err := http.Get(url)
+	if err != nil {
+		return Pokemon{}, err
+	}
+	defer res.Body.Close()
+
+	dat, err := io.ReadAll(res.Body)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	pokemonResponse := Pokemon{}
+	err = json.Unmarshal(dat, &pokemonResponse)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	// Add to cache
+	cfg.pokeapiClient.Add(url, dat)
+
+	return pokemonResponse, nil
 }
 
 func cleanInput(text string) []string {
