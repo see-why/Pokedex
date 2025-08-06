@@ -209,12 +209,12 @@ func TestCommandExplore_NoArgs(t *testing.T) {
 	cfg := &config{
 		pokeapiClient: pokecache.NewCache(5 * time.Minute),
 	}
-	
+
 	err := commandExplore(cfg)
 	if err == nil {
 		t.Error("expected error when no arguments provided")
 	}
-	
+
 	expectedError := "you must provide a location area name"
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q, got %q", expectedError, err.Error())
