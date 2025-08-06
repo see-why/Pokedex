@@ -64,13 +64,13 @@ func TestGetCommands(t *testing.T) {
 	commands := getCommands()
 
 	// Test that we have exactly the expected number of commands
-	expectedCount := 4
+	expectedCount := 5
 	if len(commands) != expectedCount {
 		t.Errorf("Expected %d commands, got %d", expectedCount, len(commands))
 	}
 
 	// Test that all expected commands are present
-	expectedCommands := []string{"help", "exit", "map", "mapb"}
+	expectedCommands := []string{"help", "exit", "map", "mapb", "explore"}
 
 	for _, expectedCmd := range expectedCommands {
 		_, exists := commands[expectedCmd]
@@ -173,7 +173,7 @@ func TestConfig(t *testing.T) {
 
 func TestCliCommandStruct(t *testing.T) {
 	// Test that the cliCommand struct works as expected
-	testCallback := func(cfg *config) error {
+	testCallback := func(cfg *config, args ...string) error {
 		return nil
 	}
 
@@ -202,5 +202,21 @@ func TestCliCommandStruct(t *testing.T) {
 	err := cmd.callback(cfg)
 	if err != nil {
 		t.Errorf("callback returned unexpected error: %v", err)
+	}
+}
+
+func TestCommandExplore_NoArgs(t *testing.T) {
+	cfg := &config{
+		pokeapiClient: pokecache.NewCache(5 * time.Minute),
+	}
+	
+	err := commandExplore(cfg)
+	if err == nil {
+		t.Error("expected error when no arguments provided")
+	}
+	
+	expectedError := "you must provide a location area name"
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q, got %q", expectedError, err.Error())
 	}
 }
