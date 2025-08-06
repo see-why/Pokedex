@@ -64,13 +64,13 @@ func TestGetCommands(t *testing.T) {
 	commands := getCommands()
 
 	// Test that we have exactly the expected number of commands
-	expectedCount := 7
+	expectedCount := 8
 	if len(commands) != expectedCount {
 		t.Errorf("Expected %d commands, got %d", expectedCount, len(commands))
 	}
 
 	// Test that all expected commands are present
-	expectedCommands := []string{"help", "exit", "map", "mapb", "explore", "catch", "inspect"}
+	expectedCommands := []string{"help", "exit", "map", "mapb", "explore", "catch", "inspect", "pokedex"}
 
 	for _, expectedCmd := range expectedCommands {
 		_, exists := commands[expectedCmd]
@@ -252,5 +252,35 @@ func TestCommandInspect_NoArgs(t *testing.T) {
 	expectedError := "you must provide a Pokemon name"
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+	}
+}
+
+func TestCommandPokedex_EmptyPokedex(t *testing.T) {
+	cfg := &config{
+		pokeapiClient: pokecache.NewCache(5 * time.Minute),
+		caughtPokemon: make(map[string]Pokemon),
+	}
+
+	// Should not return an error even with no arguments
+	err := commandPokedex(cfg)
+	if err != nil {
+		t.Errorf("expected no error, got %q", err.Error())
+	}
+}
+
+func TestCommandPokedex_WithPokemon(t *testing.T) {
+	cfg := &config{
+		pokeapiClient: pokecache.NewCache(5 * time.Minute),
+		caughtPokemon: make(map[string]Pokemon),
+	}
+
+	// Add some test Pokemon to the caught list
+	cfg.caughtPokemon["pidgey"] = Pokemon{Name: "pidgey"}
+	cfg.caughtPokemon["caterpie"] = Pokemon{Name: "caterpie"}
+
+	// Should not return an error
+	err := commandPokedex(cfg)
+	if err != nil {
+		t.Errorf("expected no error, got %q", err.Error())
 	}
 }
