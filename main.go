@@ -8,10 +8,14 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/see-why/Pokedex/internal/pokecache"
 )
 
 func main() {
 	config := &config{
+		pokeapiClient:       pokecache.NewCache(5 * time.Minute),
 		nextLocationURL:     "https://pokeapi.co/api/v2/location-area",
 		previousLocationURL: nil,
 	}
@@ -47,6 +51,7 @@ func main() {
 }
 
 type config struct {
+	pokeapiClient       pokecache.Cache
 	nextLocationURL     string
 	previousLocationURL *string
 }
@@ -103,7 +108,7 @@ func commandHelp(cfg *config) error {
 }
 
 func commandMap(cfg *config) error {
-	locationAreas, err := getLocationAreas(cfg.nextLocationURL)
+	locationAreas, err := getLocationAreas(cfg, cfg.nextLocationURL)
 	if err != nil {
 		return err
 	}
@@ -126,7 +131,7 @@ func commandMapb(cfg *config) error {
 		return nil
 	}
 
-	locationAreas, err := getLocationAreas(*cfg.previousLocationURL)
+	locationAreas, err := getLocationAreas(cfg, *cfg.previousLocationURL)
 	if err != nil {
 		return err
 	}
@@ -153,7 +158,19 @@ type locationAreasResp struct {
 	} `json:"results"`
 }
 
-func getLocationAreas(pageURL string) (locationAreasResp, error) {
+func getLocationAreas(cfg *config, pageURL string) (locationAreasResp, error) {
+	// Check if we have the data in cache
+	if val, ok := cfg.pokeapiClient.Get(pageURL); ok {
+		fmt.Printf("Using cached data for %s\n", pageURL)
+		locationAreasResponse := locationAreasResp{}
+		err := json.Unmarshal(val, &locationAreasResponse)
+		if err != nil {
+			return locationAreasResp{}, err
+		}
+		return locationAreasResponse, nil
+	}
+
+	fmt.Printf("Making HTTP request to %s\n", pageURL)
 	res, err := http.Get(pageURL)
 	if err != nil {
 		return locationAreasResp{}, err
@@ -170,6 +187,9 @@ func getLocationAreas(pageURL string) (locationAreasResp, error) {
 	if err != nil {
 		return locationAreasResp{}, err
 	}
+
+	// Add to cache
+	cfg.pokeapiClient.Add(pageURL, dat)
 
 	return locationAreasResponse, nil
 }
