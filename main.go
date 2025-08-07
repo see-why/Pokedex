@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chzyer/readline"
 	"github.com/see-why/Pokedex/internal/pokecache"
 )
 
@@ -22,15 +22,29 @@ func main() {
 		caughtPokemon:       make(map[string]Pokemon),
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
+	// Create readline instance with command history
+	rl, err := readline.New("Pokedex > ")
+	if err != nil {
+		fmt.Printf("Error creating readline: %v\n", err)
+		os.Exit(1)
+	}
+	defer rl.Close()
 
 	for {
-		fmt.Print("Pokedex > ")
-		if !scanner.Scan() {
-			// No more input available (EOF or error)
-			break
+		input, err := rl.Readline()
+		if err != nil {
+			// Handle EOF (Ctrl+C, Ctrl+D) or other errors
+			if err == readline.ErrInterrupt {
+				fmt.Println("\nClosing the Pokedex... Goodbye!")
+				break
+			} else if err == io.EOF {
+				fmt.Println("\nClosing the Pokedex... Goodbye!")
+				break
+			} else {
+				fmt.Printf("Error reading input: %v\n", err)
+				continue
+			}
 		}
-		input := scanner.Text()
 
 		words := cleanInput(input)
 		if len(words) == 0 {

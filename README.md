@@ -19,6 +19,7 @@ A command-line Pokemon exploration and collection tool built in Go. Explore the 
 ### 🖥️ Interactive Experience
 
 - **REPL Interface**: Command-line interface with persistent state
+- **Command History**: Navigate through previous commands using arrow keys (↑/↓)
 - **Help System**: Built-in command documentation and usage examples
 - **Real-time Feedback**: Immediate responses and error handling
 
@@ -50,6 +51,8 @@ go build
 | `exit` | none | Exit the application |
 
 ## Usage Examples
+
+**Note**: Use the ↑ (up) and ↓ (down) arrow keys to navigate through your command history.
 
 ```bash
 # Start the Pokedex
@@ -135,6 +138,8 @@ Pokedex/
 ### Technical Details
 
 - **Language**: Go 1.24+
+- **Dependencies**: 
+  - `github.com/chzyer/readline` - Enhanced terminal input with command history
 - **API Integration**: RESTful calls to [PokeAPI](https://pokeapi.co/)
 - **Concurrency**: Thread-safe operations with mutex protection
 - **Testing**: Comprehensive test coverage with table-driven tests
